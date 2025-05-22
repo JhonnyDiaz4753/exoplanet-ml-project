@@ -31,20 +31,16 @@ def extract_and_select_features(dataframes, labels):
     """
     dataframes: lista de pd.DataFrame con columnas 'time', 'flux'
     labels: lista con etiqueta para cada dataframe (0 o 1)
-
+    
     Devuelve: DataFrame con características seleccionadas y vector y con las etiquetas
     """
     all_data = []
-    valid_labels = []
+    valid_labels = []  # Solo etiquetas de curvas válidas
 
     for i, df in enumerate(dataframes):
-        df = df.dropna(subset=["time", "flux"])
-        if "flux" not in df.columns or "time" not in df.columns:
-            print(f"Advertencia: DataFrame {i} no tiene columnas 'time' y 'flux'.")
-            continue
+        df = df.dropna()
         if df["flux"].isnull().any() or df.shape[0] < 10:
-            print(f"Advertencia: DataFrame {i} tiene menos de 10 filas o valores nulos en 'flux'.")
-            continue
+            continue  # Descartamos si aún quedan NaNs o es muy corta
 
         df_ = df.copy()
         df_["id"] = i
@@ -54,27 +50,16 @@ def extract_and_select_features(dataframes, labels):
     if not all_data:
         raise ValueError("No hay datos válidos para extraer características.")
 
-    all_data = pd.concat(all_data, ignore_index=True)
-
+    all_data = pd.concat(all_data)
+    
     # Extraer características
-    extracted_features = extract_features(
-        all_data,
-        column_id="id",
-        column_sort="time",
-        column_value="flux",
-        disable_progressbar=False
-    )
-    print("Características extraídas:", extracted_features.shape)
+    extracted_features = extract_features(all_data, column_id="id", column_sort="time", disable_progressbar=False)
 
-    # Imputar valores faltantes
+    # Imputar valores faltantes (en features, no en curvas)
     impute(extracted_features)
 
     # Seleccionar características relevantes
-    y = pd.Series(valid_labels, index=extracted_features.index)
+    y = pd.Series(valid_labels)
     features_filtered = select_features(extracted_features, y)
-
-    print("Características seleccionadas después del filtrado:", features_filtered.shape)
-    if features_filtered.shape[1] == 0:
-        print("Advertencia: No se seleccionaron características relevantes. Revisa los datos y las etiquetas.")
 
     return features_filtered, y

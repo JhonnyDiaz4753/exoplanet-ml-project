@@ -1,0 +1,3 @@
+Este gráfico muestra la curva de luz normalizada de la estrella.
+El eje X representa el tiempo en días, el eje Y es el flujo normalizado.
+Se observa la variabilidad típica y posibles tránsitos en las curvas positivas.
