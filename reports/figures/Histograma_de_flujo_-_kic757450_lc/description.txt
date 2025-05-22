@@ -1,0 +1,2 @@
+Histograma que muestra la distribución del flujo normalizado de la curva de luz.
+Permite visualizar la simetría y dispersión del flujo durante el período observado.
