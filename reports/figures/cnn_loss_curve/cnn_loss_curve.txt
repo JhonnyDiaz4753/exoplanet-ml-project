@@ -1,0 +1,3 @@
+Este gráfico muestra la evolución de la función de pérdida (binary crossentropy) durante el entrenamiento de la CNN.
+Se puede observar si el modelo está sobreajustando (train_loss << val_loss) o si la validación mejora con el tiempo.
+Se aplicó early stopping con paciencia 5, por lo que el entrenamiento se detuvo cuando la pérdida de validación dejó de mejorar.

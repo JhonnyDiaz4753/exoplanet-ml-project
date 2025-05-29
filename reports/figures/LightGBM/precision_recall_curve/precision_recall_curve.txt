@@ -1,0 +1,1 @@
+Curva Precision-Recall que evalúa el equilibrio entre precisión y exhaustividad del modelo.

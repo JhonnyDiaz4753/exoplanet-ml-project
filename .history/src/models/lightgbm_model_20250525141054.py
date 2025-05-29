@@ -1,0 +1,113 @@
+import pandas as pd
+import numpy as np
+import lightgbm as lgb
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, ConfusionMatrixDisplay, roc_curve
+import matplotlib.pyplot as plt
+import os
+import re
+
+# Limpiar nombres para ser compatibles con LightGBM
+def clean_column_name(name):
+    name = str(name)
+    name = re.sub(r'[^A-Za-z0-9_]', '_', name)  # Sustituir cualquier carácter no permitido por "_"
+    name = re.sub(r'_+', '_', name)             # Reemplazar múltiples guiones bajos consecutivos por uno
+    name = name.strip('_')                      # Eliminar guiones bajos al inicio/fin
+    return name
+
+def train_lightgbm_model(csv_path='../../data/features/features_tsfresh.csv',
+                         output_dir='../reports/figures/LightGBM/',
+                         return_metrics=False):
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 1. Cargar el CSV
+    df = pd.read_csv(csv_path)
+
+    # 2. Filtrar solo columnas numéricas
+    df = df.loc[:, df.dtypes.apply(lambda x: np.issubdtype(x, np.number))]
+
+    # 3. Validar presencia de 'label'
+    if 'label' not in df.columns:
+        raise ValueError("No se encontró la columna 'label' en el archivo CSV.")
+
+    # 4. Separar X e y
+    X = df.drop(columns=['label'])
+    y = df['label']
+
+    # 5. Limpiar nombres de columnas
+    clean_names = [clean_column_name(col) for col in X.columns]
+    X.columns = clean_names
+
+    # 6. Guardar nombres de columnas para depuración
+    with open(os.path.join(output_dir, 'feature_names.txt'), 'w') as f:
+        for col in X.columns:
+            f.write(col + '\n')
+
+    # 7. División de datos
+    X_trainval, X_test, y_trainval, y_test = train_test_split(X, y, test_size=0.15, random_state=42, stratify=y)
+    X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval, test_size=0.15, random_state=42, stratify=y_trainval)
+
+    # 8. Entrenamiento con LightGBM
+    model = lgb.LGBMClassifier(
+        n_estimators=500,
+        learning_rate=0.03,
+        max_depth=8,
+        random_state=42,
+        class_weight='balanced',
+    )
+
+    model.fit(
+        X_train, y_train,
+        eval_set=[(X_val, y_val)],
+        eval_metric='binary_logloss'
+    )
+
+    # 9. Evaluación
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    y_pred = (y_pred_proba >= 0.5).astype(int)
+
+    acc = accuracy_score(y_test, y_pred)
+    prec = precision_score(y_test, y_pred)
+    rec = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    auc = roc_auc_score(y_test, y_pred_proba)
+
+    # 10. Guardar métricas
+    with open(f'{output_dir}/metrics.txt', 'w') as f:
+        f.write(f"Accuracy: {acc:.4f}\n")
+        f.write(f"Precision: {prec:.4f}\n")
+        f.write(f"Recall: {rec:.4f}\n")
+        f.write(f"F1 Score: {f1:.4f}\n")
+        f.write(f"AUC: {auc:.4f}\n")
+
+    # 11. Curva ROC
+    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+    plt.figure()
+    plt.plot(fpr, tpr, label=f'AUC = {auc:.2f}')
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlabel('FPR')
+    plt.ylabel('TPR')
+    plt.title('Curva ROC LightGBM')
+    plt.legend()
+    plt.savefig(f'{output_dir}/roc_curve.png')
+    plt.close()
+
+    # 12. Matriz de confusión
+    cm = confusion_matrix(y_test, y_pred)
+    disp = ConfusionMatrixDisplay(cm)
+    disp.plot()
+    plt.title("Matriz de Confusión LightGBM")
+    plt.savefig(f'{output_dir}/confusion_matrix.png')
+    plt.close()
+
+    print(f"✅ Modelo LightGBM entrenado. Resultados guardados en {output_dir}")
+  
+    if return_metrics:
+        return {
+            'accuracy': acc,
+            'precision': prec,
+            'recall': rec,
+            'f1': f1,
+            'auc': auc
+        }
