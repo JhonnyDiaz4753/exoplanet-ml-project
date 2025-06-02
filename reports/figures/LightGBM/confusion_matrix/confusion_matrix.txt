@@ -1,0 +1,1 @@
+Matriz de confusión que muestra los valores verdaderos frente a las predicciones del modelo LightGBM.

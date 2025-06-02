@@ -1,0 +1,1 @@
+Curva ROC que muestra la relación entre tasa de verdaderos positivos (TPR) y tasa de falsos positivos (FPR) para el modelo LightGBM.
